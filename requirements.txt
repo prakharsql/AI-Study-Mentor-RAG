@@ -1,0 +1,10 @@
+streamlit
+langchain
+langchain-community
+langchain-openai
+sentence-transformers
+faiss-cpu
+pypdf
+scikit-learn
+numpy
+python-dotenv

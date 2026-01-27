@@ -1,0 +1,6 @@
+The OSI model consists of seven layers:
+Physical, Data Link, Network, Transport,
+Session, Presentation, and Application.
+
+TCP is a connection-oriented protocol,
+while UDP is connectionless.
