@@ -7,7 +7,7 @@ from rag.vector_store import create_vector_store
 from rag.retriever import retrieve_context
 from dl.semantic_model import semantic_similarity
 from ml.topic_importance import predict_importance
-from langchain_ollama import ChatOllama
+from langchain_community.llms import Ollama
 
 app = FastAPI(title="AI Study Mentor API")
 app.add_middleware(
@@ -31,9 +31,7 @@ def root():
 
 # Load RAG once
 docs = []
-docs += load_documents("data/textbooks")
 docs += load_documents("data/notes")
-docs += load_documents("data/pyqs")
 vector_db = create_vector_store(docs)
 
 llm = ChatOllama(model="tinyllama", temperature=0)
