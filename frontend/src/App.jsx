@@ -16,7 +16,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-black overflow-hidden text-white">
+    <div className="relative min-h-screen bg-neutral-100 text-neutral-900 dark:bg-black dark:text-white overflow-hidden transition-colors duration-500">
 
       {/* Cursor spotlight */}
       <div
