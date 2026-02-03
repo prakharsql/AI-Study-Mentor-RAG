@@ -1,148 +1,148 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
-/* ================================
-   Animated Background Per Theme
-================================ */
-function ThemeBackground({ theme }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      {/* Light */}
-      <motion.div
-        animate={{ opacity: theme === "light" ? 1 : 0 }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-        className="absolute inset-0 bg-gradient-to-br from-white via-indigo-50 to-purple-100"
-      />
-
-      {/* System */}
-      <motion.div
-        animate={{ opacity: theme === "system" ? 1 : 0 }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-        className="absolute inset-0 bg-gradient-to-br from-neutral-100 via-neutral-200 to-indigo-200"
-      />
-
-      {/* Dark */}
-      <motion.div
-        animate={{ opacity: theme === "dark" ? 1 : 0 }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-        className="absolute inset-0 bg-gradient-to-br from-black via-neutral-900 to-purple-900"
-      />
-    </div>
-  );
-}
-
-/* ================================
-   Sliding Pill Theme Toggle
-================================ */
-function ThemeToggle({ theme, setTheme }) {
-  const positions = {
-    system: "4px",
-    light: "52px",
-    dark: "100px",
-  };
-
-  return (
-    <div className="relative w-[150px] rounded-full bg-white/10 backdrop-blur-md p-1 flex items-center">
-      <motion.div
-        className="absolute top-1 h-[32px] w-[48px] rounded-full bg-white/20"
-        animate={{ left: positions[theme] }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      />
-
-      {["system", "light", "dark"].map((mode) => (
-        <button
-          key={mode}
-          onClick={() => setTheme(mode)}
-          className="relative z-10 w-[48px] h-[32px] flex items-center justify-center text-sm"
-          aria-label={`Switch to ${mode} mode`}
-        >
-          {mode === "system" ? "🖥" : mode === "light" ? "☀" : "🌙"}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* ================================
-   App
-================================ */
 export default function App() {
-  const [theme, setTheme] = useState("system");
+  const [dark, setDark] = useState(true);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef(null);
 
-  /* Load saved theme */
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved) setTheme(saved);
-  }, []);
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
 
-  /* Apply theme */
-  useEffect(() => {
-    const root = document.documentElement;
-
-    if (theme === "dark") root.classList.add("dark");
-    else if (theme === "light") root.classList.remove("dark");
-    else {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      root.classList.toggle("dark", systemDark);
-    }
-
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  /* Listen for OS theme change */
-  useEffect(() => {
-    if (theme !== "system") return;
-
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const listener = () =>
-      document.documentElement.classList.toggle("dark", media.matches);
-
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, [theme]);
-
-  /* Mouse spotlight */
+  // Mouse tracking
   useEffect(() => {
     const move = (e) => setMouse({ x: e.clientX, y: e.clientY });
     window.addEventListener("mousemove", move);
     return () => window.removeEventListener("mousemove", move);
   }, []);
 
+  // 🎇 Particle Background
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    let particles = [];
+    const count = 60;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 1,
+        vx: Math.random() * 0.3 - 0.15,
+        vy: Math.random() * 0.3 - 0.15,
+      });
+    }
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        // Mouse attraction
+        const dx = mouse.x - p.x;
+        const dy = mouse.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          p.x -= dx * 0.002;
+          p.y -= dy * 0.002;
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = dark
+          ? "rgba(168,85,247,0.6)"
+          : "rgba(99,102,241,0.35)";
+        ctx.fill();
+      });
+
+      requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => window.removeEventListener("resize", resize);
+  }, [mouse, dark]);
+
   return (
-    <div className="relative min-h-screen overflow-hidden transition-colors duration-500">
-      {/* Animated background */}
-      <ThemeBackground theme={theme} />
+    <div
+      className="
+        relative min-h-screen overflow-hidden transition-colors duration-700
+        bg-gradient-to-br
+          from-[#f6f4ff] via-[#f1edff] to-[#ffffff]
+        dark:from-[#05010d] dark:via-[#0b0320] dark:to-black
+        text-black dark:text-white
+      "
+    >
+      {/* 🎇 Particle Layer */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 z-0 pointer-events-none"
+      />
 
       {/* Cursor spotlight */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 transition duration-300 z-10"
         style={{
-          background: `radial-gradient(600px at ${mouse.x}px ${mouse.y}px, rgba(168,85,247,0.15), transparent 40%)`,
+          background: `radial-gradient(600px at ${mouse.x}px ${mouse.y}px,
+            rgba(168,85,247,0.18), transparent 45%)`,
         }}
       />
 
-      {/* Ambient blobs */}
-      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-purple-600/30 blur-[160px] animate-floatSlow" />
-      <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-indigo-600/30 blur-[160px] animate-floatSlower" />
+      {/* Center */}
+      <div className="relative z-20 min-h-screen flex items-center justify-center px-6">
 
-      {/* Content */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-6 text-neutral-900 dark:text-white">
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full max-w-3xl rounded-3xl bg-white/10 backdrop-blur-2xl border border-white/10 shadow-[0_0_140px_rgba(168,85,247,0.35)] p-10"
+          transition={{ duration: 0.8 }}
+          className="
+            w-full max-w-3xl rounded-[28px]
+            bg-white/80 dark:bg-white/10
+            backdrop-blur-[28px]
+            border border-white/30 dark:border-white/10
+            shadow-[0_40px_120px_rgba(168,85,247,0.25)]
+            p-10
+          "
         >
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-fuchsia-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+            <h1
+              className="
+                text-5xl font-semibold tracking-tight
+                bg-gradient-to-r from-purple-600 via-indigo-500 to-fuchsia-500
+                bg-clip-text text-transparent
+              "
+            >
               AI Study Mentor
             </h1>
-            <ThemeToggle theme={theme} setTheme={setTheme} />
+
+            <button
+              onClick={() => setDark(!dark)}
+              className="
+                px-4 py-2 rounded-full
+                bg-black/5 dark:bg-white/10
+                hover:scale-105 transition
+                backdrop-blur-md
+              "
+            >
+              {dark ? "☀ Light" : "🌙 Dark"}
+            </button>
           </div>
 
-          <p className="text-white/60 mb-10 text-lg">
+          <p className="text-black/60 dark:text-white/60 mb-10 text-lg">
             Intelligent learning powered by Retrieval-Augmented Generation & LLMs
           </p>
 
@@ -150,36 +150,33 @@ export default function App() {
           <div className="flex gap-4">
             <input
               placeholder="Ask a deep study question..."
-              className="flex-1 px-6 py-4 rounded-2xl bg-black/40 border border-white/10 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/60 transition"
+              className="
+                flex-1 px-6 py-4 rounded-2xl
+                bg-white/70 dark:bg-black/40
+                text-black dark:text-white
+                placeholder-black/40 dark:placeholder-white/40
+                border border-black/10 dark:border-white/10
+                backdrop-blur-xl
+                focus:outline-none focus:ring-2 focus:ring-purple-500/50
+                transition
+              "
             />
+
             <motion.button
               whileHover={{ scale: 1.07 }}
-              whileTap={{ scale: 0.96 }}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-indigo-500 font-semibold shadow-lg shadow-purple-500/40"
+              whileTap={{ scale: 0.95 }}
+              className="
+                px-8 py-4 rounded-2xl
+                bg-gradient-to-r from-purple-500 to-indigo-500
+                text-white font-medium
+                shadow-lg shadow-purple-500/40
+              "
             >
               Ask 🚀
             </motion.button>
           </div>
         </motion.div>
       </div>
-
-      {/* Floating animations */}
-      <style>{`
-        @keyframes floatSlow {
-          0%,100% { transform: translateY(0) }
-          50% { transform: translateY(-40px) }
-        }
-        @keyframes floatSlower {
-          0%,100% { transform: translateY(0) }
-          50% { transform: translateY(-70px) }
-        }
-        .animate-floatSlow {
-          animation: floatSlow 12s ease-in-out infinite;
-        }
-        .animate-floatSlower {
-          animation: floatSlower 18s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
