@@ -1,0 +1,23 @@
+[
+  {
+    "id": "5c9ba767-279f-4ad1-8468-8a12859a9a72",
+    "name": "DMW.pdf",
+    "type": "syllabus",
+    "file_type": ".pdf",
+    "status": "processed"
+  },
+  {
+    "id": "db439604-72b4-4411-819d-d67eb3e094a2",
+    "name": "WhatsApp Image 2026-02-04 at 1.48.12 AM.jpeg",
+    "type": "previous_year_paper",
+    "file_type": ".jpeg",
+    "status": "failed"
+  },
+  {
+    "id": "4575d94f-d3df-4695-b426-505cf765cebb",
+    "name": "WhatsApp Image 2026-02-04 at 1.48.12 AM.jpeg",
+    "type": "previous_year_paper",
+    "file_type": ".jpeg",
+    "status": "failed"
+  }
+]

@@ -1,10 +1,15 @@
-streamlit
+fastapi
+uvicorn[standard]
+python-multipart
 langchain
 langchain-community
-langchain-openai
+langchain-ollama
 sentence-transformers
 faiss-cpu
 pypdf
+pdfplumber
+Pillow
+pytesseract
 scikit-learn
 numpy
 python-dotenv
