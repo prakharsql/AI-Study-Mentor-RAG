@@ -16,6 +16,11 @@ from rag.vector_store import (
     DEFAULT_PERSIST_DIR,
 )
 from rag.retriever import retrieve_context
+from rag.question_analyzer import (
+    analyze_important_questions,
+    build_important_questions_context,
+    IMPORTANT_QUESTIONS_PROMPT_TEMPLATE,
+)
 
 try:
     from langchain_ollama import ChatOllama
@@ -83,6 +88,7 @@ def root():
         "message": "AI Study Mentor Backend is running 🚀",
         "endpoints": {
             "ask": "POST /ask",
+            "important_questions": "GET /important-questions?top_n=15",
             "upload_syllabus": "POST /upload/syllabus",
             "upload_papers": "POST /upload/papers",
             "files": "GET /files",
@@ -268,6 +274,67 @@ async def upload_papers(file: UploadFile = File(...)):
     }
 
 
+# ---------- Important questions (optional JSON API for frontend) ----------
+@app.get("/important-questions")
+def get_important_questions(top_n: int = 15):
+    """
+    Returns ranked important questions from previous year papers + syllabus mapping.
+    No API contract change for existing endpoints; this is additive for cards/UI.
+    """
+    if vector_db is None:
+        return {
+            "questions": [],
+            "by_topic": {},
+            "syllabus_available": False,
+            "paper_chunks_used": 0,
+            "message": "Upload syllabus and previous year papers first.",
+        }
+    try:
+        analysis = analyze_important_questions(vector_db, top_n=min(top_n, 30))
+        # Expose only frontend-safe fields
+        questions = [
+            {
+                "text": q.get("text", ""),
+                "importance_score": round(q.get("importance_score", 0), 4),
+                "frequency": q.get("raw_count", 0),
+                "syllabus_relevance": round(q.get("syllabus_relevance", 0), 4),
+                "unit": q.get("unit"),
+                "topic": q.get("topic"),
+                "years": q.get("years", []),
+                "file_name": q.get("file_name"),
+            }
+            for q in analysis.get("questions", [])
+        ]
+        by_topic = {}
+        for (unit, topic), qs in analysis.get("by_topic", {}).items():
+            key = f"{unit or 'Other'} / {topic or 'General'}"
+            by_topic[key] = [
+                {
+                    "text": q.get("text", ""),
+                    "importance_score": round(q.get("importance_score", 0), 4),
+                    "frequency": q.get("raw_count", 0),
+                    "years": q.get("years", []),
+                }
+                for q in qs
+            ]
+        return {
+            "questions": questions,
+            "by_topic": by_topic,
+            "syllabus_available": analysis.get("syllabus_available", False),
+            "paper_chunks_used": analysis.get("paper_chunks_used", 0),
+        }
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("Important questions analysis failed")
+        return {
+            "questions": [],
+            "by_topic": {},
+            "syllabus_available": False,
+            "paper_chunks_used": 0,
+            "message": f"Analysis failed: {str(e)}",
+        }
+
+
 # ---------- Ask (Exam mentor RAG) ----------
 class Question(BaseModel):
     question: str
@@ -311,6 +378,17 @@ IMPORTANT:
 - Prioritize topics/questions that appear in BOTH syllabus and previous year papers"""
 
 
+def _is_important_questions_query(question: str) -> bool:
+    """Heuristic: treat as 'important questions' request to run analyzer."""
+    q = (question or "").lower().strip()
+    triggers = [
+        "important question", "most expected", "probable question",
+        "expected question", "what question", "which question",
+        "top question", "high yield", "most likely question",
+    ]
+    return any(t in q for t in triggers)
+
+
 @app.post("/ask")
 def ask_question(data: Question):
     if vector_db is None:
@@ -322,10 +400,33 @@ def ask_question(data: Question):
         }
     try:
         from langchain_core.messages import SystemMessage, HumanMessage
-        model = os.getenv("OLLAMA_MODEL", "llama3.2")
-        llm = ChatOllama(model=model, temperature=0.3)
+        model = os.getenv("OLLAMA_MODEL", "tinyllama")
+        llm = ChatOllama(model=model, temperature=0.2)
+
+        # When user asks for important/expected questions, run analyzer and inject structured context
         context = retrieve_context(vector_db, data.question, k=15)
-        user_prompt = f"""Context from your uploaded documents:
+        if _is_important_questions_query(data.question):
+            try:
+                analysis = analyze_important_questions(vector_db, top_n=15)
+                structured = build_important_questions_context(analysis, top_n=10)
+                user_prompt = IMPORTANT_QUESTIONS_PROMPT_TEMPLATE.format(
+                    structured_questions=structured,
+                    top_n=10,
+                ).strip() + f"\n\nUser asked: {data.question}"
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).exception("Question analyzer failed, using plain context")
+                user_prompt = f"""Context from your uploaded documents:
+
+{context}
+
+---
+
+User question: {data.question}
+
+Answer using ONLY the context above. If about important/expected questions, use the required format (Most Important Questions with reasons and sources). Otherwise answer concisely. If not in context, say so."""
+        else:
+            user_prompt = f"""Context from your uploaded documents:
 
 {context}
 
@@ -342,6 +443,7 @@ If the question is about important topics or expected questions:
 - Always mention the source (Syllabus, Previous year papers, or Both) for each item
 
 Otherwise, answer concisely from the context. If the answer is not in the context, say so clearly."""
+
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=user_prompt),

@@ -19,5 +19,35 @@
     "type": "previous_year_paper",
     "file_type": ".jpeg",
     "status": "failed"
+  },
+  {
+    "id": "f4b62fd9-b09b-499a-84b8-d623bc6e5112",
+    "name": "DMW.pdf",
+    "type": "syllabus",
+    "file_type": ".pdf",
+    "status": "processed"
+  },
+  {
+    "id": "943c3319-abc6-4fe3-8863-22fb062839fb",
+    "name": "WhatsApp Image 2026-02-04 at 1.48.12 AM.jpeg",
+    "type": "previous_year_paper",
+    "file_type": ".jpeg",
+    "status": "processed",
+    "year": 2026
+  },
+  {
+    "id": "f1cd1e40-a15f-44a0-80ae-e90d10534680",
+    "name": "WhatsApp Image 2026-02-04 at 1.48.12 AM.jpeg",
+    "type": "previous_year_paper",
+    "file_type": ".jpeg",
+    "status": "processed",
+    "year": 2026
+  },
+  {
+    "id": "bdd35ceb-f146-43e4-9b97-77c0e0386aee",
+    "name": "DMW.pdf",
+    "type": "syllabus",
+    "file_type": ".pdf",
+    "status": "processed"
   }
 ]
